@@ -1,174 +1,85 @@
-import tkinter
-import secrets
-import string
 from tkinter import *
-from tkinter import messagebox, ttk
-from PIL import Image, ImageTk
-import csv
-import os.path
-
-import pandas as pd
+from tkinter import messagebox
+from random import choice, randint, shuffle
+import pyperclip
 
 
-def checkIfEnteysIsNotEmpty(website, username, password):
-    if website == "":
-        tkinter.messagebox.showerror(title="Website is empty", message="Website is empty \n please try again.")
-        return False
-    if username == "":
-        tkinter.messagebox.showerror(title="Username is empty", message="Username/Email is empty \n please try again.")
-        return False
-    if password == "":
-        tkinter.messagebox.showerror(title="Password is empty", message="Password is empty \n please try again.")
-        return False
-    return True
+# ---------------------------- PASSWORD GENERATOR ------------------------------- #
+
+def generate_password():
+    letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+               'v',
+               'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q',
+               'R',
+               'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    symbols = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
+
+    # List Comprehension
+    # new_list = [new_item for item in list]
+
+    password_letters = [choice(letters) for _ in range(randint(8, 10))]
+    password_symbols = [choice(symbols) for _ in range(randint(2, 4))]
+    password_numbers = [choice(numbers) for _ in range(randint(2, 4))]
+
+    password_list = password_letters + password_symbols + password_numbers
+    shuffle(password_list)
+
+    password = "".join(password_list)
+    password_entry.insert(0, password)
+    pyperclip.copy(password)
 
 
-def readAllTheWebsiteAndThePasswordFromFile():
-    fileName = "Password_Manager_Data.csv"
-    if os.path.isfile(fileName):
-        df = pd.read_csv(fileName)
-        return df["Website:"].values.tolist(), df["Password:"].values.tolist()
-    return None, None
+# ---------------------------- SAVE PASSWORD ------------------------------- #
+def save():
+    website = website_entry.get()
+    email = email_entry.get()
+    password = password_entry.get()
+
+    if len(website) == 0 or len(password) == 0:
+        messagebox.showinfo(title="Oops", message="Please make sure you haven't left any fields empty.")
+    else:
+        is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered: \nEmail: {email} "
+                                                              f"\nPassword: {password} \nIs it ok to save")
+        if is_ok:
+            with open("data.txt", "a") as data_file:
+                data_file.write(f"{website} | {email} | {password}\n")
+                website_entry.delete(0, END)
+                password_entry.delete(0, END)
 
 
-def changePasswordIfWebsiteExist():
-    website = entryWebsite.get()
-    username = entryUsername.get()
-    password = entryPassword.get()
-
-    if checkIfEnteysIsNotEmpty(website, username, password):
-        websiteLst, passwordLst = readAllTheWebsiteAndThePasswordFromFile()
-        if websiteLst is None:
-            save(website, username, password)
-        elif website in websiteLst:
-            is_ok = tkinter.messagebox.askokcancel(title="Change password to save",
-                                                   message=f"Do you want to change the {website} Password ?\n\n"
-                                                           f"These are the details entered:\n\nWebsite: {website}\n"
-                                                           f"User Name: {username}\n"
-                                                           f"Password:{password} \n\nIs it ok to save?")
-            if is_ok:
-                # reading the csv file
-                df = pd.read_csv("Password_Manager_Data.csv")
-                # updating the column value/data
-                df.loc[websiteLst.index(website), 'Password:'] = password
-                df.loc[websiteLst.index(website), 'Username:'] = username
-                # writing into the file
-                df.to_csv("Password_Manager_Data.csv", index=False)
-
-
-        else:
-            save(website, username, password)
-
-
-def showCsv():
-    root = Tk()
-    root.title("Passwords")
-    width = 600
-    height = 400
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    x = (screen_width / 2) - (width / 2)
-    y = (screen_height / 2) - (height / 2)
-    root.geometry("%dx%d+%d+%d" % (width, height, x, y))
-    root.resizable(0, 0)
-    TableMargin = Frame(root, width=500)
-    TableMargin.pack(side=TOP)
-    scrollbarx = Scrollbar(TableMargin, orient=HORIZONTAL)
-    scrollbary = Scrollbar(TableMargin, orient=VERTICAL)
-    tree = ttk.Treeview(TableMargin, columns=("Website", "Username", "Password"), height=400, selectmode="extended",
-                        yscrollcommand=scrollbary.set, xscrollcommand=scrollbarx.set)
-    scrollbary.config(command=tree.yview)
-    scrollbary.pack(side=RIGHT, fill=Y)
-    scrollbarx.config(command=tree.xview)
-    scrollbarx.pack(side=BOTTOM, fill=X)
-    tree.heading('Website', text="Website:", anchor=W)
-    tree.heading('Username', text="Username:", anchor=W)
-    tree.heading('Password', text="Password:", anchor=W)
-    tree.column('#0', stretch=NO, minwidth=0, width=0)
-    tree.column('#1', stretch=NO, minwidth=0, width=200)
-    tree.column('#2', stretch=NO, minwidth=0, width=200)
-    tree.column('#3', stretch=NO, minwidth=0, width=300)
-    tree.pack()
-    if os.path.isfile("Password_Manager_Data.csv"):
-        with open('Password_Manager_Data.csv') as f:
-            reader = csv.DictReader(f, delimiter=',')
-            for row in reader:
-                firstname = row["Website:"]
-                lastname = row["Username:"]
-                address = row['Password:']
-                tree.insert("", 0, values=(firstname, lastname, address))
-
-
-def generatePassword():
-    alphabet = string.ascii_letters + string.digits
-    password = ''.join(secrets.choice(alphabet) for i in range(18))
-    entryPassword.delete(0, 'end')
-    entryPassword.insert(0, password)
-
-
-def save(website, username, password):
-    is_ok = tkinter.messagebox.askokcancel(title="New password to save",
-                                           message=
-                                           f"These are the details entered:\n\n"
-                                           f"Website: {website}\n"
-                                           f"User Name: {username}\n"
-                                           f"Password:{password} \n\nIs it ok to save?")
-    if is_ok:
-        if not os.path.isfile("Password_Manager_Data.csv"):
-            header = ['Website:', 'Username:', 'Password:']
-            with open('Password_Manager_Data.csv', 'a', encoding='UTF8', newline='') as f:
-                writer = csv.writer(f)
-                # write the header
-                writer.writerow(header)
-                data = [
-                    [website, username, password],
-                ]
-                writer.writerows(data)
-        else:
-            with open('Password_Manager_Data.csv', 'a', encoding='UTF8', newline='') as f:
-                writer = csv.writer(f)
-                data = [
-                    [website, username, password],
-                ]
-                writer.writerows(data)
-
-
+# ---------------------------- UI SETUP ------------------------------- #
 window = Tk()
-window.geometry('450x350')
 window.title("Password Manager")
+window.config(padx=50, pady=50)
 
-img = Image.open('logo.png')
-resized = img.resize((130, 130), Image.Resampling.LANCZOS)
-new_pic = ImageTk.PhotoImage(resized)
+canvas = Canvas(height=200, width=200)
+logo_img = PhotoImage(file="logo.png")
+canvas.create_image(100, 100, image=logo_img)
+canvas.grid(row=0, column=1)
 
-panel = Label(window, image=new_pic)
-panel.pack()
+# Labels
+website_label = Label(text="Website:")
+website_label.grid(row=1, column=0)
+email_label = Label(text="Email/Username:")
+email_label.grid(row=2, column=0)
+password_label = Label(text="Password:")
+password_label.grid(row=3, column=0)
 
-labelWebsite = Label(window, text="Website:", width=20, font=("bold", 10))
-labelWebsite.place(x=56, y=130)
+# Entries
+website_entry = Entry(width=52)
+website_entry.grid(row=1, column=1, columnspan=2)
+website_entry.focus()
+email_entry = Entry(width=52)
+email_entry.grid(row=2, column=1, columnspan=2)
+email_entry.insert(0, "niku21cs@cmrit.ac.in")
+password_entry = Entry(width=52)
+password_entry.grid(row=3, column=1, columnspan=2)
 
-entryWebsite = Entry(window)
-entryWebsite.place(x=240, y=130, width=150)
-entryWebsite.focus()
+# Buttons
+generate_password_button = Button(text="Generate Password", command=generate_password)
+generate_password_button.grid(row=3, column=2)
+add_button = Button(text="Add", width=44, command=save)
+add_button.grid(row=4, column=1, columnspan=2)
 
-labelUsername = Label(window, text="Email/Username:", width=20, font=("bold", 10))
-labelUsername.place(x=80, y=170)
-
-entryUsername = Entry(window)
-entryUsername.insert(0, "savizronen@gmail.com")
-entryUsername.place(x=240, y=170, width=150)
-
-labelPassword = Label(window, text="Password:", width=20, font=("bold", 10))
-labelPassword.place(x=60, y=210)
-
-entryPassword = Entry(window)
-entryPassword.place(x=240, y=210, width=150)
-Button(window, text='Generate Password', width=20, bg='black', fg='white', command=generatePassword).place(x=240, y=235)
-
-Button(window, text='Open passwords page', width=20, bg='black', fg='white', command=showCsv).place(x=155, y=270)
-
-Button(window, text='Add', width=20, bg='brown', fg='white', command=changePasswordIfWebsiteExist).place(x=155, y=300)
-# it is use for display the registration form on the window
 window.mainloop()
-
-print("Password Manager form  seccussfully created...")
